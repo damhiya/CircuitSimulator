@@ -67,12 +67,12 @@ getVariables (Const _)  = S.empty
 getVariables Zero       = S.empty
 
 diff :: Variable -> Expression -> Expression
-diff x (Add e1 e2) = Add (diff e1 x) (diff e2 x)
-diff x (Sub e1 e2) = Sub (diff e1 x) (diff e2 x)
-diff x (Mul e1 e2) = Add (Mul (diff e1 x) e2) (Mul e1 (diff e2 x))
-diff x (Div e1 e2) = diff (Mul e1 (Inv e2)) x
-diff x (Neg e) = Neg (diff e x)
-diff x (Inv e) = Neg (Div (diff e x) (Mul e e))
+diff x (Add e1 e2) = Add (diff x e1) (diff x e2)
+diff x (Sub e1 e2) = Sub (diff x e1) (diff x e2)
+diff x (Mul e1 e2) = Add (Mul (diff x e1) e2) (Mul e1 (diff x e2))
+diff x (Div e1 e2) = diff x (Mul e1 (Inv e2))
+diff x (Neg e) = Neg (diff x e)
+diff x (Inv e) = Neg (Div (diff x e) (Mul e e))
 diff x (Var v)  | v == x    = Const 1
                 | otherwise = Zero
 diff _ (Const _) = Zero
@@ -89,7 +89,14 @@ isDerivative (Derivative _) = True
 isDerivative _ = False
 
 solveState :: [Equation] -> [Variable] -> State -> Maybe State
-solveState eqs vars state = Nothing where
+solveState eqs vars state = approximate initState where
+  exps = map expression eqs
+  j = jacobi vars exps
+
+  initState = zip vars [0,0..]
+
+  approximate :: State -> Maybe State
+  approximate state = Nothing
 
 evaluate :: State -> Expression-> Double
 evaluate = undefined
