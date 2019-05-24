@@ -66,27 +66,30 @@ getVariables (Var x) = S.singleton x
 getVariables (Const _)  = S.empty
 getVariables Zero       = S.empty
 
-diff :: Expression -> Variable -> Expression
-diff (Add e1 e2) x = Add (diff e1 x) (diff e2 x)
-diff (Sub e1 e2) x = Sub (diff e1 x) (diff e2 x)
-diff (Mul e1 e2) x = Add (Mul (diff e1 x) e2) (Mul e1 (diff e2 x))
-diff (Div e1 e2) x = diff (Mul e1 (Inv e2)) x
-diff (Neg e) x = Neg (diff e x)
-diff (Inv e) x = Neg (Div (diff e x) (Mul e e))
-diff (Var v) x  | v == x    = Const 1
+diff :: Variable -> Expression -> Expression
+diff x (Add e1 e2) = Add (diff e1 x) (diff e2 x)
+diff x (Sub e1 e2) = Sub (diff e1 x) (diff e2 x)
+diff x (Mul e1 e2) = Add (Mul (diff e1 x) e2) (Mul e1 (diff e2 x))
+diff x (Div e1 e2) = diff (Mul e1 (Inv e2)) x
+diff x (Neg e) = Neg (diff e x)
+diff x (Inv e) = Neg (Div (diff e x) (Mul e e))
+diff x (Var v)  | v == x    = Const 1
                 | otherwise = Zero
-diff (Const _) _ = Zero
-diff Zero      _ = Zero
+diff _ (Const _) = Zero
+diff _ Zero      = Zero
 
-gradient :: Expression -> [Variable] -> [Expression]
-gradient e xs = map (diff e) xs
+grad :: [Variable] -> Expression -> [Expression]
+grad vars exp = map (\var -> diff var exp) vars
+
+jacobi :: [Variable] -> [Expression] -> [[Expression]]
+jacobi vars exps = map (grad vars) exps
 
 isDerivative :: Variable -> Bool
 isDerivative (Derivative _) = True
 isDerivative _ = False
 
 solveState :: [Equation] -> [Variable] -> State -> Maybe State
-solveState eqs vars state = Nothing
+solveState eqs vars state = Nothing where
 
 evaluate :: State -> Expression-> Double
 evaluate = undefined
