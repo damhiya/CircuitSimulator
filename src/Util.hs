@@ -7,3 +7,9 @@ partitionWhile f (x:xs)
   | otherwise = ([],x:xs)
     where
     (as,bs) = partitionWhile f xs
+
+checkTolerance :: Double -> [Double] -> Bool
+checkTolerance t [] = True
+checkTolerance t (x:xs)
+      | x<t = checkTolerance t xs
+      | otherwise = False

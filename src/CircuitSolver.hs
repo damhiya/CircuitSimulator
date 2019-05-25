@@ -88,18 +88,53 @@ isDerivative :: Variable -> Bool
 isDerivative (Derivative _) = True
 isDerivative _ = False
 
-solveState :: [Equation] -> [Variable] -> State -> Maybe State
-solveState eqs vars state = approximate initState where
+solveState :: [Equation] -> [Variable] -> State -> State
+solveState eqs vars param = approximate initState where
   exps = map expression eqs
   j = jacobi vars exps
 
   initState = zip vars [0,0..]
 
-  approximate :: State -> Maybe State
-  approximate state = Nothing
+  approximate :: State -> State
+  approximate last
+    | pass      = last
+    | otherwise = approximate new where
+      state = last ++ param
+      
+      pass = checkTolerance 1e-9 fList
+
+      fList  = map (evaluate state) exps
+      delfList = map (map (evaluate state)) j
+
+      c = length vars
+
+      f    = matrix 1 fList
+      delf = matrix c (concat delfList)
+
+      Just deltav = linearSolve delf (-f)
+
+      deltavList = concat (toLists deltav)
+
+      new = zipWith update last deltavList
+      update (var,val) delta = (var, val+delta)
+      
+
+getValue :: State -> Variable -> Double
+getValue [] _ = error "getValue : no matching variable exist"
+getValue ((x,val):xs) var
+  | x == var  = val
+  | otherwise = getValue xs var
 
 evaluate :: State -> Expression-> Double
-evaluate = undefined
+evaluate s (Add e1 e2) = (evaluate s e1) + (evaluate s e2)
+evaluate s (Sub e1 e2) = (evaluate s e1) - (evaluate s e2)
+evaluate s (Mul e1 e2) = (evaluate s e1) * (evaluate s e2)
+evaluate s (Div e1 e2) = (evaluate s e1) / (evaluate s e2)
+evaluate s (Neg e) = negate (evaluate s e)
+evaluate s (Inv e) = 1.0  / (evaluate s e)
+evaluate s (Var v) = getValue s v
+evaluate _ (Const x)  = x
+evaluate _ Zero       = 0.0
 
 evaluateSolution :: Solution -> Expression -> V.Vector Double
 evaluateSolution = undefined
