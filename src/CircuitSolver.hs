@@ -88,17 +88,15 @@ isDerivative :: Variable -> Bool
 isDerivative (Derivative _) = True
 isDerivative _ = False
 
-solveState :: [Equation] -> [Variable] -> State -> State
-solveState eqs vars param = approximate initState where
+solveNewton :: [Equation] -> [Variable] -> State -> State
+solveNewton eqs vars param = iteration (zip vars [0,0..]) where
   exps = map expression eqs
   j = jacobi vars exps
 
-  initState = zip vars [0,0..]
-
-  approximate :: State -> State
-  approximate last
+  iteration :: State -> State
+  iteration last
     | pass      = last
-    | otherwise = approximate new where
+    | otherwise = iteration new where
       state = last ++ param
       
       pass = checkTolerance 1e-9 fList
