@@ -43,4 +43,7 @@ data Expression = Add Expression Expression
                 | Zero
                 deriving Show
 
-data Equation = Equation {expression :: Expression} deriving Show
+data Equation = Equation {expression :: Expression}
+
+instance Show Equation where
+  show (Equation exp) = (show exp) ++ "==0"
