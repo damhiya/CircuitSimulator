@@ -38,5 +38,5 @@ data Circuit = Circuit [Component]
 instance Show CircuitVariableId where
   show Time = "Time"
   show (NodeVoltage nid) = "Node " ++ (show nid)
-  show (ComponentVariable cid vid) = "Comp " ++ (show cid) ++ " " ++ (show cid)
+  show (ComponentVariable cid vid) = "Comp " ++ (show cid) ++ " " ++ (show vid)
   show (Derivative var) = "Deriv " ++ (show var)

@@ -1,5 +1,6 @@
 module Expression where
 
+import Data.Maybe
 import qualified Data.Set as S
 
 data Variable a = Variable a deriving (Eq, Ord)
@@ -60,37 +61,36 @@ collapse e = case e of
     collapse' (Inv Zero) = undefined
     collapse' e = e
 
-diff :: Eq a => Variable a -> Expression a -> Expression a
-diff _ Zero = Zero
-diff _ One  = Zero
-diff _ (Const _) = Zero
-diff x (Var v)  | v == x    = One
+partial :: Eq a => Variable a -> Expression a -> Expression a
+partial _ Zero = Zero
+partial _ One  = Zero
+partial _ (Const _) = Zero
+partial x (Var v)  | v == x    = One
                 | otherwise = Zero
-diff x (Add e1 e2) = Add (diff x e1) (diff x e2)
-diff x (Sub e1 e2) = Sub (diff x e1) (diff x e2)
-diff x (Mul e1 e2) = Add (Mul (diff x e1) e2) (Mul e1 (diff x e2))
-diff x (Div e1 e2) = diff x (Mul e1 (Inv e2))
-diff x (Neg e) = Neg (diff x e)
-diff x (Inv e) = Neg (Div (diff x e) (Mul e e))
-
+partial x (Add e1 e2) = Add (partial x e1) (partial x e2)
+partial x (Sub e1 e2) = Sub (partial x e1) (partial x e2)
+partial x (Mul e1 e2) = Add (Mul (partial x e1) e2) (Mul e1 (partial x e2))
+partial x (Div e1 e2) = partial x (Mul e1 (Inv e2))
+partial x (Neg e) = Neg (partial x e)
+partial x (Inv e) = Neg (Div (partial x e) (Mul e e))
 
 grad :: Eq a => [Variable a] -> Expression a -> [Expression a]
-grad vars exp = map (\var -> diff var exp) vars
+grad vars exp = map (\var -> partial var exp) vars
 
 jacobian :: Eq a => [Variable a] -> [Expression a] -> [[Expression a]]
 jacobian vars exps = map (grad vars) exps
 
-getValue :: Eq a => State a -> Variable a -> Double
-getValue [] _ = error "getValue : no matching variable exist"
+getValue :: Eq a => State a -> Variable a -> Maybe Double
+getValue [] _ = Nothing
 getValue ((x,val):xs) var
-  | x == var  = val
+  | x == var  = Just val
   | otherwise = getValue xs var
 
 evaluate :: Eq a => State a -> Expression a -> Double
 evaluate _ Zero = 0.0
 evaluate _ One  = 1.0
 evaluate _ (Const x)  = x
-evaluate s (Var v) = getValue s v
+evaluate s (Var v) = fromJust $ getValue s v
 evaluate s (Add e1 e2) = (evaluate s e1) + (evaluate s e2)
 evaluate s (Sub e1 e2) = (evaluate s e1) - (evaluate s e2)
 evaluate s (Mul e1 e2) = (evaluate s e1) * (evaluate s e2)
@@ -98,10 +98,24 @@ evaluate s (Div e1 e2) = (evaluate s e1) / (evaluate s e2)
 evaluate s (Neg e) = negate (evaluate s e)
 evaluate s (Inv e) = 1.0  / (evaluate s e)
 
+partialEvaluate :: Eq a => State a -> Expression a -> Expression a
+partialEvaluate _ Zero = Zero
+partialEvaluate _ One  = One
+partialEvaluate _ (Const x) = Const x
+partialEvaluate s (Var v) = case getValue s v of
+  Just val -> Const val
+  Nothing  -> Var v
+partialEvaluate s (Add e1 e2) = Add (partialEvaluate s e1) (partialEvaluate s e2)
+partialEvaluate s (Sub e1 e2) = Sub (partialEvaluate s e1) (partialEvaluate s e2)
+partialEvaluate s (Mul e1 e2) = Mul (partialEvaluate s e1) (partialEvaluate s e2)
+partialEvaluate s (Div e1 e2) = Div (partialEvaluate s e1) (partialEvaluate s e2)
+partialEvaluate s (Neg e) = Neg (partialEvaluate s e)
+partialEvaluate s (Inv e) = Inv (partialEvaluate s e)
+
 data Equation a = Equation {expression :: Expression a}
 
 instance Show a => Show (Variable a) where
-  show (Variable id) = "Var " ++ (show id)
+  show (Variable id) = "V" ++ (show id)
 
 instance Show a => Show (Equation a) where
   show (Equation exp) = (show exp) ++ " == 0"

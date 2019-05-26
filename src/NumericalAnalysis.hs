@@ -4,44 +4,50 @@ import Expression
 import qualified Data.Vector as V
 import Numeric.LinearAlgebra
 
-
 data AnalysisParameter = Parameter {
-  timeInterval  :: Double,
-  stepNum       :: Int
+  interval  :: Double,
+  stepNum   :: Int
 }
 
-checkTolerance :: Double -> [Double] -> Bool
-checkTolerance t [] = True
-checkTolerance t (x:xs)
-  | x<t = checkTolerance t xs
-  | otherwise = False
+solveNewton :: Eq a => [Equation a] -> [Variable a] -> State a
+solveNewton eqs vars 
+  | dime == dimv = iterate state
+  | otherwise    = error "dimension mismatching"
+    where
+    dime = length eqs
+    dimv = length vars
+    dim = dime
 
-solveNewton :: Eq a => [Equation a] -> [Variable a] -> State a -> State a
-solveNewton eqs vars param = iteration (zip vars [0,0..]) where
-  exps = map expression eqs
-  j = jacobian vars exps
-  
-  iteration last
-    | pass      = last
-    | otherwise = iteration new where
-      state = last ++ param
-      
-      pass = checkTolerance 1e-9 fList
+    exps = map expression eqs
+    jacobianExpression = map (map collapse) (jacobian vars exps)
 
-      fList  = map (evaluate state) exps
-      delfList = map (map (evaluate state)) j
+    state = zip vars [0,0..]
+    
+    iterate lastState
+      | pass      = lastState
+      | otherwise = iterate new where
+        fList        = map (evaluate lastState) exps
+        jacobianList = map (map (evaluate lastState)) jacobianExpression
 
-      c = length vars
+        pass = checkTolerance 1e-9 fList
 
-      f    = matrix 1 fList
-      delf = matrix c (concat delfList)
+        c = length vars
 
-      Just deltav = linearSolve delf (-f)
+        f        = matrix 1 fList
+        jacobian = matrix c (concat jacobianList)
 
-      deltavList = concat (toLists deltav)
+        Just dvars = linearSolve jacobian (-f)
 
-      new = zipWith update last deltavList
-      update (var,val) delta = (var, val+delta)
+        dvarsList = concat (toLists dvars)
+
+        new = zipWith update lastState dvarsList
+
+        update (var,val) delta = (var, val+delta)
+
+    checkTolerance t [] = True
+    checkTolerance t (x:xs)
+      | abs(x) < t     = checkTolerance t xs
+      | otherwise = False
 
 
 type RK4Solution a = [(Variable a, V.Vector Double)]
