@@ -61,16 +61,18 @@ collapse e = case e of
     collapse' e = e
 
 diff :: Eq a => Variable a -> Expression a -> Expression a
+diff _ Zero = Zero
+diff _ One  = Zero
+diff _ (Const _) = Zero
+diff x (Var v)  | v == x    = One
+                | otherwise = Zero
 diff x (Add e1 e2) = Add (diff x e1) (diff x e2)
 diff x (Sub e1 e2) = Sub (diff x e1) (diff x e2)
 diff x (Mul e1 e2) = Add (Mul (diff x e1) e2) (Mul e1 (diff x e2))
 diff x (Div e1 e2) = diff x (Mul e1 (Inv e2))
 diff x (Neg e) = Neg (diff x e)
 diff x (Inv e) = Neg (Div (diff x e) (Mul e e))
-diff x (Var v)  | v == x    = One
-                | otherwise = Zero
-diff _ (Const _) = Zero
-diff _ Zero      = Zero
+
 
 grad :: Eq a => [Variable a] -> Expression a -> [Expression a]
 grad vars exp = map (\var -> diff var exp) vars
@@ -85,15 +87,16 @@ getValue ((x,val):xs) var
   | otherwise = getValue xs var
 
 evaluate :: Eq a => State a -> Expression a -> Double
+evaluate _ Zero = 0.0
+evaluate _ One  = 1.0
+evaluate _ (Const x)  = x
+evaluate s (Var v) = getValue s v
 evaluate s (Add e1 e2) = (evaluate s e1) + (evaluate s e2)
 evaluate s (Sub e1 e2) = (evaluate s e1) - (evaluate s e2)
 evaluate s (Mul e1 e2) = (evaluate s e1) * (evaluate s e2)
 evaluate s (Div e1 e2) = (evaluate s e1) / (evaluate s e2)
 evaluate s (Neg e) = negate (evaluate s e)
 evaluate s (Inv e) = 1.0  / (evaluate s e)
-evaluate s (Var v) = getValue s v
-evaluate _ (Const x)  = x
-evaluate _ Zero       = 0.0
 
 data Equation a = Equation {expression :: Expression a}
 
