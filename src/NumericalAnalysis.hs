@@ -1,13 +1,10 @@
 module NumericalAnalysis where
 
 import Expression
-import qualified Data.Vector as V
 import Numeric.LinearAlgebra
-
-data AnalysisParameter = Parameter {
-  interval  :: Double,
-  stepNum   :: Int
-}
+import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as MV
+import Control.Monad.ST
 
 solveNewton :: Eq a => [Equation a] -> [Variable a] -> State a
 solveNewton eqs vars 
@@ -48,12 +45,17 @@ solveNewton eqs vars
     checkTolerance t (x:xs)
       | abs(x) < t     = checkTolerance t xs
       | otherwise = False
-
+      
+data RK4Parameter = Parameter {
+  interval  :: (Double,Double),
+  stepNum   :: Int
+}
 
 type RK4Solution a = [(Variable a, V.Vector Double)]
 
-solveRK4 :: [Equation a] -> [Variable a] -> State a -> RK4Solution a
-solveRK4 = undefined
+solveRK4 :: [Equation a] -> Variable a -> [(Variable a, Variable a)]
+            -> State a -> RK4Parameter -> RK4Solution a
+solveRK4 eqs time varPack init param = undefined
 
 evaluateFromRK4Solution :: RK4Solution a -> Expression a -> V.Vector Double
 evaluateFromRK4Solution = undefined

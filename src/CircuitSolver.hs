@@ -25,7 +25,7 @@ getConnections circuit = connections where
     | otherwise = ([],x:xs)
       where
       (as,bs) = partitionWhile f xs
-      
+
   classify :: NodeId -> [(NodeId, ComponentId, LeadId)] -> [[(ComponentId, LeadId)]]
   classify nid xs
     | zs == []  = [ys']
@@ -54,7 +54,7 @@ nodeEquations circuit = eqs where
   
   eqs = map (Equation . currentSum) connections
 
-simulateCircuit :: Circuit -> State CircuitVariableId -> AnalysisParameter -> RK4Solution CircuitVariableId
+simulateCircuit :: Circuit -> State CircuitVariableId -> RK4Parameter -> RK4Solution CircuitVariableId
 simulateCircuit circuit init param = undefined where
   ceqs = componentEquations circuit
   neqs = nodeEquations circuit
