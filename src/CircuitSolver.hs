@@ -6,7 +6,6 @@ import Expression
 import Data.List
 import qualified Data.Set as S
 import qualified Data.Vector as V
-import NumericalAnalysis
 
 getConnections :: Circuit -> [[(ComponentId, LeadId)]]
 getConnections circuit = connections where
@@ -54,8 +53,8 @@ nodeEquations circuit = eqs where
   
   eqs = map (Equation . currentSum) connections
 
-simulateCircuit :: Circuit -> State CircuitVariable -> RK4Parameter -> RK4Solution CircuitVariable
-simulateCircuit circuit init param = undefined where
+simulateCircuit :: Circuit -> (Double,Double) -> State v -> Int -> [Expression v] -> [V.Vector Double]
+simulateCircuit circuit (ti,tf) init n rexps = undefined where
   ceqs = componentEquations circuit
   neqs = nodeEquations circuit
 
