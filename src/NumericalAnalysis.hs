@@ -55,15 +55,17 @@ data RK4Parameter = RK4Parameter {
 
 type RK4Solution a = [(Variable a, V.Vector Double)]
 
-solveRK4 :: [Equation a] -> Variable a -> [(Variable a, Variable a)]
+solveRK4 :: Eq a => [Equation a] -> [Variable a] -> Variable a -> [Variable a] -> [Variable a]
             -> State a -> RK4Parameter -> RK4Solution a
-solveRK4 eqs time varPack init (RK4Parameter (ti,tf) n) = zip ys result where
-  (ys, ys') = unzip varPack
+solveRK4 eqs vars t ys ys' ysInit (RK4Parameter (ti,tf) n) = zip ys (solve) where
+  tmpVars = filter (\var -> not $ elem var ([t]++ys++ys')) vars
 
-  result = runST $ do
-    rk4 <- forM ys (\_ -> MV.new (n+1))
+  solve = runST $ do
+    wss <- forM ys (\_ -> MV.new (n+1))
+
+    forM (zip wss ysInit) (\(ws,(_,ival)) -> MV.write ws 0 ival)
     -- do RK4 Method
-    forM rk4 V.freeze
+    forM wss V.freeze
 
 evaluateFromRK4Solution :: RK4Solution a -> Expression a -> V.Vector Double
 evaluateFromRK4Solution = undefined
