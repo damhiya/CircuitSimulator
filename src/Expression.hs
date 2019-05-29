@@ -15,18 +15,6 @@ class (Eq v, Ord v, Hashable v) => Variable v
 
 type State v = HM.HashMap v Double
 
--- data Expression v = Zero
---                   | One
---                   | Const Double
---                   | Var (Variable v)
---                   | Add (Expression v) (Expression v)
---                   | Sub (Expression v) (Expression v)
---                   | Mul (Expression v) (Expression v)
---                   | Div (Expression v) (Expression v)
---                   | Neg (Expression v)
---                   | Inv (Expression v)
---                   deriving Show
-
 data Expression :: * -> * where
   Zero  :: Variable v => Expression v
   One   :: Variable v => Expression v
