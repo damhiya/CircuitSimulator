@@ -20,12 +20,12 @@ instance ComponentInterface Wire where
   nodeId (Wire n0 _ ) 0 = n0
   nodeId (Wire _  n1) 1 = n1
 
-  current _   0 cid = Var $ Variable (ComponentVariable cid 0)
+  current _   0 cid = Var (ComponentVariable cid 0)
   current com 1 cid = Neg (current com 1 cid)
 
   equations (Wire n0 n1) cid = [eq] where
-    v0 = Var $ Variable (NodeVoltage n0)
-    v1 = Var $ Variable (NodeVoltage n1)
+    v0 = Var (NodeVoltage n0)
+    v1 = Var (NodeVoltage n1)
 
     eq = Equation (Sub v1 v0)
 
@@ -34,10 +34,10 @@ instance ComponentInterface Ground where
 
   nodeId (Ground n) 0 = n
 
-  current _ 0 cid = Var $ Variable (ComponentVariable cid 0)
+  current _ 0 cid = Var (ComponentVariable cid 0)
 
   equations (Ground n) cid = [eq] where
-    v = Var $ Variable (NodeVoltage n)
+    v = Var (NodeVoltage n)
     eq = Equation v
 
 instance ComponentInterface VSource where
@@ -46,12 +46,12 @@ instance ComponentInterface VSource where
   nodeId (VSource n0 _  _) 0 = n0
   nodeId (VSource _  n1 _) 1 = n1
 
-  current _   0 cid = Var $ Variable (ComponentVariable cid 0)
+  current _   0 cid = Var (ComponentVariable cid 0)
   current com 1 cid = Neg (current com 0 cid)
 
   equations (VSource n0 n1 v) cid = [eq] where
-    v0 = Var $ Variable (NodeVoltage n0)
-    v1 = Var $ Variable (NodeVoltage n1)
+    v0 = Var (NodeVoltage n0)
+    v1 = Var (NodeVoltage n1)
     eq = Equation (Sub (Sub v1  v0) (Const v))
 
 instance ComponentInterface ISource where
@@ -71,14 +71,14 @@ instance ComponentInterface Resistor where
   nodeId (Resistor n0 _  _) 0 = n0
   nodeId (Resistor _  n1 _) 1 = n1
 
-  current _   0 cid = Var $ Variable (ComponentVariable cid 0)
+  current _   0 cid = Var (ComponentVariable cid 0)
   current com 1 cid = Neg (current com 0 cid)
 
   equations com cid = [eq] where
     Resistor n0 n1 r = com
 
-    v0 = Var $ Variable (NodeVoltage n0)
-    v1 = Var $ Variable (NodeVoltage n1)
+    v0 = Var (NodeVoltage n0)
+    v1 = Var (NodeVoltage n1)
 
     i = current com 0 cid
     v = Mul i (Const r)
@@ -91,16 +91,16 @@ instance ComponentInterface Capacitor where
   nodeId (Capacitor n0 _  _) 0 = n0
   nodeId (Capacitor _  n1 _) 1 = n1
 
-  current _   0 cid = Var $ Variable (Derivative $ Variable (ComponentVariable cid 0))
+  current _   0 cid = Var (Derivative (ComponentVariable cid 0))
   current com 1 cid = Neg (current com 0 cid)
 
   equations com cid = [eq] where
     Capacitor n0 n1 c = com
 
-    v0 = Var $ Variable (NodeVoltage n0)
-    v1 = Var $ Variable (NodeVoltage n1)
+    v0 = Var (NodeVoltage n0)
+    v1 = Var (NodeVoltage n1)
 
-    q = Var $ Variable (ComponentVariable cid 0)
+    q = Var (ComponentVariable cid 0)
     v = Div q (Const c)
 
     eq = Equation (Sub (Sub v0 v) v1)
@@ -111,16 +111,16 @@ instance ComponentInterface Inductor where
   nodeId (Inductor n0 _  _) 0 = n0
   nodeId (Inductor _  n1 _) 1 = n1
 
-  current _   0 cid = Var $ Variable (ComponentVariable cid 0)
+  current _   0 cid = Var (ComponentVariable cid 0)
   current com 1 cid = Neg (current com 0 cid)
 
   equations com cid = [eq] where
     Inductor n0 n1 l = com
 
-    v0 = Var $ Variable (NodeVoltage n0)
-    v1 = Var $ Variable (NodeVoltage n1)
+    v0 = Var (NodeVoltage n0)
+    v1 = Var (NodeVoltage n1)
 
-    di = Var $ Variable $ Derivative $ Variable (ComponentVariable cid 0)
+    di = Var $ Derivative (ComponentVariable cid 0)
     v  = Mul di (Const l)
     
     eq = Equation (Sub (Sub v0 v) v1)

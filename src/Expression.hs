@@ -1,36 +1,57 @@
+{-#
+  LANGUAGE
+  GADTs,
+  KindSignatures
+#-}
+
 module Expression where
 
+import Data.Hashable
+import qualified Data.HashMap.Strict as HM
 import Data.Maybe
 import qualified Data.Set as S
 
-data Variable a = Variable a deriving (Eq, Ord)
+class (Eq v, Ord v, Hashable v) => Variable v
 
-type State a = [(Variable a, Double)]
+type State v = HM.HashMap v Double
 
-data Expression a = Zero
-                  | One
-                  | Const Double
-                  | Var (Variable a)
-                  | Add (Expression a) (Expression a)
-                  | Sub (Expression a) (Expression a)
-                  | Mul (Expression a) (Expression a)
-                  | Div (Expression a) (Expression a)
-                  | Neg (Expression a)
-                  | Inv (Expression a)
-                  deriving Show
+-- data Expression v = Zero
+--                   | One
+--                   | Const Double
+--                   | Var (Variable v)
+--                   | Add (Expression v) (Expression v)
+--                   | Sub (Expression v) (Expression v)
+--                   | Mul (Expression v) (Expression v)
+--                   | Div (Expression v) (Expression v)
+--                   | Neg (Expression v)
+--                   | Inv (Expression v)
+--                   deriving Show
 
-relatedVariables :: Ord a => Expression a -> S.Set (Variable a)
-relatedVariables (Add x y) = S.union (relatedVariables x) (relatedVariables y)
-relatedVariables (Sub x y) = S.union (relatedVariables x) (relatedVariables y)
-relatedVariables (Mul x y) = S.union (relatedVariables x) (relatedVariables y)
-relatedVariables (Div x y) = S.union (relatedVariables x) (relatedVariables y)
-relatedVariables (Neg x) = relatedVariables x
-relatedVariables (Inv x) = relatedVariables x
-relatedVariables (Var x) = S.singleton x
-relatedVariables (Const _)  = S.empty
+data Expression :: * -> * where
+  Zero  :: Variable v => Expression v
+  One   :: Variable v => Expression v
+  Const :: Variable v => Double -> Expression v
+  Var   :: Variable v => v -> Expression v
+  Add   :: Variable v => Expression v -> Expression v -> Expression v
+  Sub   :: Variable v => Expression v -> Expression v -> Expression v
+  Mul   :: Variable v => Expression v -> Expression v -> Expression v
+  Div   :: Variable v => Expression v -> Expression v -> Expression v
+  Neg   :: Variable v => Expression v -> Expression v
+  Inv   :: Variable v => Expression v -> Expression v
+
+relatedVariables :: Variable v => Expression v -> S.Set v
 relatedVariables Zero       = S.empty
+relatedVariables One        = S.empty
+relatedVariables (Const _)  = S.empty
+relatedVariables (Var x)    = S.singleton x
+relatedVariables (Add x y)  = S.union (relatedVariables x) (relatedVariables y)
+relatedVariables (Sub x y)  = S.union (relatedVariables x) (relatedVariables y)
+relatedVariables (Mul x y)  = S.union (relatedVariables x) (relatedVariables y)
+relatedVariables (Div x y)  = S.union (relatedVariables x) (relatedVariables y)
+relatedVariables (Neg x)    = relatedVariables x
+relatedVariables (Inv x)    = relatedVariables x
 
-collapse :: Expression a -> Expression a
+collapse :: Expression v -> Expression v
 collapse e = case e of
   Zero      -> Zero
   One       -> One
@@ -61,7 +82,7 @@ collapse e = case e of
     collapse' (Inv Zero) = undefined
     collapse' e = e
 
-partial :: Eq a => Variable a -> Expression a -> Expression a
+partial :: Variable v => v -> Expression v -> Expression v
 partial _ Zero = Zero
 partial _ One  = Zero
 partial _ (Const _) = Zero
@@ -74,23 +95,17 @@ partial x (Div e1 e2) = partial x (Mul e1 (Inv e2))
 partial x (Neg e) = Neg (partial x e)
 partial x (Inv e) = Neg (Div (partial x e) (Mul e e))
 
-grad :: Eq a => [Variable a] -> Expression a -> [Expression a]
+grad :: Variable v => [v] -> Expression v -> [Expression v]
 grad vars exp = map (\var -> partial var exp) vars
 
-jacobian :: Eq a => [Variable a] -> [Expression a] -> [[Expression a]]
+jacobian :: Variable v => [v] -> [Expression v] -> [[Expression v]]
 jacobian vars exps = map (grad vars) exps
 
-getValue :: Eq a => State a -> Variable a -> Maybe Double
-getValue [] _ = Nothing
-getValue ((x,val):xs) var
-  | x == var  = Just val
-  | otherwise = getValue xs var
-
-evaluate :: Eq a => State a -> Expression a -> Double
+evaluate :: Variable v => State v -> Expression v -> Double
 evaluate _ Zero = 0.0
 evaluate _ One  = 1.0
 evaluate _ (Const x)  = x
-evaluate s (Var v) = fromJust $ getValue s v
+evaluate s (Var v) = fromJust $ HM.lookup v s
 evaluate s (Add e1 e2) = (evaluate s e1) + (evaluate s e2)
 evaluate s (Sub e1 e2) = (evaluate s e1) - (evaluate s e2)
 evaluate s (Mul e1 e2) = (evaluate s e1) * (evaluate s e2)
@@ -102,7 +117,7 @@ partialEvaluate :: Eq a => State a -> Expression a -> Expression a
 partialEvaluate _ Zero = Zero
 partialEvaluate _ One  = One
 partialEvaluate _ (Const x) = Const x
-partialEvaluate s (Var v) = case getValue s v of
+partialEvaluate s (Var v) = case HM.lookup v s of
   Just val -> Const val
   Nothing  -> Var v
 partialEvaluate s (Add e1 e2) = Add (partialEvaluate s e1) (partialEvaluate s e2)
@@ -112,10 +127,19 @@ partialEvaluate s (Div e1 e2) = Div (partialEvaluate s e1) (partialEvaluate s e2
 partialEvaluate s (Neg e) = Neg (partialEvaluate s e)
 partialEvaluate s (Inv e) = Inv (partialEvaluate s e)
 
-data Equation a = Equation {expression :: Expression a}
+data Equation v = Equation {lhs :: Expression v}
 
-instance Show a => Show (Variable a) where
-  show (Variable id) = "V" ++ (show id)
+instance (Show v) => Show (Expression v) where
+  show Zero = "0"
+  show One  = "1"
+  show (Const x) = show x
+  show (Var v)   = show v
+  show (Add e1 e2) = "(Add " ++ (show e1) ++ " " ++ (show e2) ++ ")"
+  show (Sub e1 e2) = "(Sub " ++ (show e1) ++ " " ++ (show e2) ++ ")"
+  show (Mul e1 e2) = "(Mul " ++ (show e1) ++ " " ++ (show e2) ++ ")"
+  show (Div e1 e2) = "(Div " ++ (show e1) ++ " " ++ (show e2) ++ ")"
+  show (Neg e) = "(Neg " ++ (show e) ++ ")"
+  show (Inv e) = "(Inv " ++ (show e) ++ ")"
 
-instance Show a => Show (Equation a) where
+instance (Show v) => Show (Equation v) where
   show (Equation exp) = (show exp) ++ " == 0"

@@ -37,24 +37,24 @@ getConnections circuit = connections where
   
   connections = classify 0 (sort rawConnections)
 
-componentEquations :: Circuit -> [Equation CircuitVariableId]
+componentEquations :: Circuit -> [Equation CircuitVariable]
 componentEquations circuit = eqs where
   Circuit components = circuit
   eqs = concat $ zipWith equations' components [0..]
 
-nodeEquations :: Circuit -> [Equation CircuitVariableId]
+nodeEquations :: Circuit -> [Equation CircuitVariable]
 nodeEquations circuit = eqs where
   Circuit components = circuit
   connections = getConnections circuit
   
-  currentSum :: [(ComponentId, LeadId)] -> Expression CircuitVariableId
+  currentSum :: [(ComponentId, LeadId)] -> Expression CircuitVariable
   currentSum [] = Zero
   currentSum ((cid, lid):xs) = Add i (currentSum xs) where
     i = current' (components !! cid) lid cid
   
   eqs = map (Equation . currentSum) connections
 
-simulateCircuit :: Circuit -> State CircuitVariableId -> RK4Parameter -> RK4Solution CircuitVariableId
+simulateCircuit :: Circuit -> State CircuitVariable -> RK4Parameter -> RK4Solution CircuitVariable
 simulateCircuit circuit init param = undefined where
   ceqs = componentEquations circuit
   neqs = nodeEquations circuit
@@ -62,5 +62,5 @@ simulateCircuit circuit init param = undefined where
   eqs = ceqs ++ neqs
 
   vars = S.toList varset where
-    varsets = map (relatedVariables . expression) eqs
+    varsets = map (relatedVariables . lhs) eqs
     varset  = foldr S.union S.empty varsets

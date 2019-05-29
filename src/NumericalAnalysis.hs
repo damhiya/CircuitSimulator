@@ -1,6 +1,7 @@
 module NumericalAnalysis where
 
 import Expression
+import qualified Data.HashMap.Strict as HM
 import Numeric.LinearAlgebra
 import Control.Monad
 import Control.Monad.ST
@@ -8,25 +9,26 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as MV
 
 
-solveNewton :: Eq a => [Equation a] -> [Variable a] -> State a
+solveNewton :: Variable v => [Equation v] -> [v] -> [Double]
 solveNewton eqs vars 
-  | dime == dimv = iterate state
+  | dime == dimv = iterate initVals
   | otherwise    = error "dimension mismatching"
     where
     dime = length eqs
     dimv = length vars
     dim = dime
 
-    exps = map expression eqs
+    exps = map lhs eqs
     jacobianExpression = map (map collapse) (jacobian vars exps)
 
-    state = zip vars [0,0..]
+    initVals = replicate dim 0.0
     
-    iterate lastState
-      | pass      = lastState
-      | otherwise = iterate new where
-        fList        = map (evaluate lastState) exps
-        jacobianList = map (map (evaluate lastState)) jacobianExpression
+    iterate :: [Double] -> [Double]
+    iterate vals
+      | pass      = vals
+      | otherwise = iterate newVals where
+        fList        =      map (evaluate (genState vars vals)) exps
+        jacobianList = map (map (evaluate (genState vars vals))) jacobianExpression
 
         pass = checkTolerance 1e-9 fList
 
@@ -39,9 +41,9 @@ solveNewton eqs vars
 
         dvarsList = concat (toLists dvars)
 
-        new = zipWith update lastState dvarsList
+        newVals = zipWith (+) vals dvarsList
 
-        update (var,val) delta = (var, val+delta)
+    genState vars vals = HM.fromList (zip vars vals)
 
     checkTolerance t [] = True
     checkTolerance t (x:xs)
@@ -53,17 +55,17 @@ data RK4Parameter = RK4Parameter {
   stepNum   :: Int
 }
 
-type RK4Solution a = [(Variable a, V.Vector Double)]
+type RK4Solution v = [(v, V.Vector Double)]
 
-solveRK4 :: Eq a => [Equation a] -> [Variable a] -> Variable a -> [Variable a] -> [Variable a]
-            -> State a -> RK4Parameter -> RK4Solution a
+solveRK4 :: Variable v => [Equation v] -> [v] -> v -> [v] -> [v]
+            -> [Double] -> RK4Parameter -> RK4Solution v
 solveRK4 eqs vars t ys ys' ysInit (RK4Parameter (ti,tf) n) = zip ys (solve) where
   tmpVars = filter (\var -> not $ elem var ([t]++ys++ys')) vars
 
   solve = runST $ do
     wss <- forM ys (\_ -> MV.new (n+1))
 
-    forM (zip wss ysInit) (\(ws,(_,ival)) -> MV.write ws 0 ival)
+    forM (zip wss ysInit) (\(ws,ival) -> MV.write ws 0 ival)
     -- do RK4 Method
     forM wss V.freeze
 
