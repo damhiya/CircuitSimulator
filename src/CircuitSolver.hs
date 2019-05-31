@@ -4,8 +4,11 @@ import Prelude
 import Circuit
 import Expression
 import Data.List
+import Data.Maybe
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Set as S
 import qualified Data.Vector as V
+import NumericalAnalysis
 
 getConnections :: Circuit -> [[(ComponentId, LeadId)]]
 getConnections circuit = connections where
@@ -53,8 +56,13 @@ nodeEquations circuit = eqs where
   
   eqs = map (Equation . currentSum) connections
 
-simulateCircuit :: Circuit -> (Double,Double) -> State v -> Int -> [Expression v] -> [V.Vector Double]
-simulateCircuit circuit (ti,tf) init n rexps = undefined where
+simulateCircuit :: Circuit
+                -> (Double,Double)
+                -> State CircuitVariable
+                -> Int
+                -> [Expression CircuitVariable]
+                -> [V.Vector Double]
+simulateCircuit circuit (ti,tf) init n rexps = result where
   ceqs = componentEquations circuit
   neqs = nodeEquations circuit
 
@@ -63,3 +71,16 @@ simulateCircuit circuit (ti,tf) init n rexps = undefined where
   vars = S.toList varset where
     varsets = map (relatedVariables . lhs) eqs
     varset  = foldr S.union S.empty varsets
+  
+  t   = Time
+  ys' = filter isDerivative vars where
+    isDerivative (Derivative _) = True
+    isDerivative _              = False
+
+  ys  = map (\(Derivative y) -> y) ys'
+  zs  = filter (\z -> (not . elem z) others) vars where
+    others = t : ys ++ ys'
+  
+  ysInit = map (\y -> fromJust $ HM.lookup y init) ys
+
+  result = solveRK4 eqs t ys ys' zs (ti,tf) ysInit n rexps
