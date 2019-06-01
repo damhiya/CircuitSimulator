@@ -25,12 +25,12 @@ class ComponentInterface a where
   current   :: a -> LeadId -> ComponentId -> Expression CircuitVariable
   equations :: a -> ComponentId -> [Equation CircuitVariable]
 
+data Component = forall a. ComponentInterface a => Component a
+
 leadIds'    (Component com) = leadIds   com
 nodeId'     (Component com) = nodeId    com
 current'    (Component com) = current   com
 equations'  (Component com) = equations com
-
-data Component = forall a. ComponentInterface a => Component a
 
 data Circuit = Circuit [Component]
 
