@@ -19,14 +19,6 @@ getConnections circuit = connections where
 
   rawConnections = concat $ zipWith mapInsert [0..] css where
     css = map getComponentConnections components
-  
-  partitionWhile :: (a -> Bool) -> [a] -> ([a],[a])
-  partitionWhile f [] = ([],[])
-  partitionWhile f (x:xs)
-    | f x       = (x:as,bs)
-    | otherwise = ([],x:xs)
-      where
-      (as,bs) = partitionWhile f xs
 
   classify :: NodeId -> [(NodeId, ComponentId, LeadId)] -> [[(ComponentId, LeadId)]]
   classify nid xs
@@ -34,7 +26,7 @@ getConnections circuit = connections where
     | otherwise = ys' : (classify (nid+1) zs)
       where
       checkNid nid (x,_,_) = x == nid
-      (ys, zs) = partitionWhile (checkNid nid) xs
+      (ys, zs) = span (checkNid nid) xs
       ys' = map (\(x,y,z) -> (y,z)) ys
   
   connections = classify 0 (sort rawConnections)
